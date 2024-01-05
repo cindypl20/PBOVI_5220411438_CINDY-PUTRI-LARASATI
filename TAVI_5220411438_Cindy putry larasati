@@ -1,0 +1,176 @@
+from cProfile import run
+from pickle import TRUE
+import pygame
+import math
+
+pygame.init()
+WIDTH, HEIGHT = 800, 800
+WIN = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Simulasi Rotasi Planet")
+
+# COLORS
+GREY = (128, 128, 128)
+YELLOWISH = (165,124, 27)
+BLUE = (0, 0, 225)
+RED = (198, 123, 92)
+BROWN = (144, 97, 77)
+CARMEL = (195, 161, 113)
+DARK_BLUE = (79, 208, 231)
+WHITE = (255, 255, 255)
+YELLOW = (255, 255, 0)
+DARK_GRAY = (80, 78, 81)
+
+# FONT
+FONT = pygame.font.SysFont("Arial Rounded MT Bold", 16)
+
+class EksplorasiLuarAngkasa:
+    AU = 149.6e6 * 1000 # Atribut ini menyimpan nilai 1 Astronomical Unit (AU) dalam meter
+    G = 6.67428e-11 # Atribut ini menyimpan nilai gravitasi universal
+    SCALE = 200 / AU # Atribut ini digunakan untuk mengonversi jarak astronomis ke piksel dalam simulasi
+    TIMESTEP = 3600 * 24 # Atribut ini menyimpan langkah waktu dalam simulasi
+
+    def __init__(self, x, y, radius, color, mass):
+        self.x = x
+        self.y = y
+        self.radius = radius
+        self.color = color
+        self.mass = mass
+
+        self.orbit = []
+        self._distance_to_sun = 0 # Protected attribute
+
+        self.x_vel = 0
+        self.y_vel = 0
+
+class Planets(EksplorasiLuarAngkasa):
+     # AU - Astronomical Unit, * 1000 untuk mengkonversi ke meter
+    AU = 149.6e6 * 1000
+    G = 6.67428e-11
+    SCALE = 200 / AU # 1AU = 100 Px
+    TIMESTREP = 3600*24 # Untuk melihat planet dengan waktu 1 hari
+    ORBIT_LENGTH = 50  # Panjang orbit minimal sebelum suatu planet dimulai digambar
+
+    def __init__(self, x, y, radius, color, mass):
+        self.x = x
+        self.y = y
+        self.radius = radius
+        self.color = color
+        self.mass = mass
+
+        self.orbit = []
+        self.sun = False
+        self._distance_to_sun = 0 # Protected attribute
+
+        self.x_vel = 0
+        self.y_vel = 0
+
+    def draw(self, win):
+        x = self.x * self.SCALE + WIDTH / 2 # Penggunaan  Operator Aritmatika +
+        y = self.y * self.SCALE + HEIGHT / 2 # Penggunaan Operator Aritmatika +
+
+        if len(self.orbit) > 2:
+            update_points = []
+            for point in self.orbit:
+                x, y = point
+                x = x * self.SCALE + WIDTH / 2
+                y = y * self.SCALE + WIDTH / 2
+                update_points.append((x, y))
+
+            pygame.draw.lines(win, self.color, False, update_points, 2)
+
+        pygame.draw.circle(win, self.color, (x,y), self.radius)
+
+        if not self.sun: # Penggunaan Operator Logika Not
+            distance_text = FONT.render(f"{round(self.distance_to_sun/1000, 1)}km", 1, WHITE)
+            win.blit(distance_text, (x - distance_text.get_width()/2, y - distance_text.get_width()/2))
+
+
+    def _attraction (self, other): # Protected method
+        # other = planets
+        other_x, other_y = other.x, other.y
+        distance_x = other_x - self.x
+        distance_y = other_y - self.y
+        distance = math.sqrt(distance_x**2 + distance_y**2)
+
+        if other.sun:
+              self.distance_to_sun = distance
+
+        force = self.G * self.mass * other.mass / distance ** 2
+        theta = math.atan2(distance_y, distance_x)
+        force_x = math.cos(theta)*force
+        force_y = math.sin(theta)*force
+        return force_x, force_y
+    
+    def update_position(self, planets):
+         
+        total_fx = total_fy = 0
+        for planet in planets:
+            if self == planet: # Penggunaan Operator Logika Pembanding
+                continue
+            
+            fx, fy = self._attraction(planet) #  Penggunaan Operator Logika And
+            total_fx += fx
+            total_fy += fy
+
+        # menghitung kecepatan
+        self.x_vel += total_fx / self.mass * self.TIMESTREP # Penggunaan aritmatika /
+        self.y_vel += total_fy / self.mass * self.TIMESTREP # # Penggunaan aritmatika /
+
+        self.x += self.x_vel * self.TIMESTREP
+        self.y += self.y_vel * self.TIMESTREP  
+        self.orbit.append((self.x, self.y))
+
+    
+def main ():
+    run = True
+    clock = pygame.time.Clock()
+
+    sun =  Planets(0,0,20, YELLOW, 1.98892 * 10**30)
+    sun.sun = True
+
+    mercury = Planets(0.387 * Planets.AU, 0, 14, GREY, 3.30 * 10**24)
+    mercury.y_vel = 47.4 * 1000 # kilometer * 1000 = meter
+
+    venus = Planets(0.723 * Planets.AU, 0, 14, YELLOWISH, 4.8685 * 10**24)
+    venus.y_vel = -35.02 * 1000 # kilometer * 1000 = meter
+
+    earth = Planets(-1 * Planets.AU, 0,16, BLUE, 5.9742 * 10**24)
+    earth.y_vel = 29.783 * 1000 # kilometer * 1000 = meter
+
+    mars = Planets(-1.524 * Planets.AU, 0, 12, RED, 6.39 * 10**23)
+    mars.y_vel = 24.077 * 1000 # kilometer * 1000 = meter
+
+    jupiter = Planets(5.203 * Planets.AU, 0, 16, BROWN, 1898.13 * 10**24)
+    jupiter.y_vel = 13.06 * 1000 # kilometer * 1000 = meter
+
+    saturn = Planets(9.537 * Planets.AU, 0, 16, CARMEL, 568.32 * 10**24)
+    saturn.y_vel = 9.68 * 1000 # kilometer * 1000 = meter
+
+    uranus = Planets(19.191 * Planets.AU, 0, 16, DARK_GRAY, 86.81 * 10**24)
+    uranus.y_vel = 6.80 * 1000 # kilometer * 1000 = meter
+
+    neptune = Planets(30.068 * Planets.AU, 0, 16, BLUE, 102.498 * 10**24)
+    neptune.y_vel = 5.43 * 1000 # kilometer * 1000 = meter
+
+    pluto = Planets(39.281 * Planets.AU, 0, 16, BROWN, 0.01303 * 10**24)
+    pluto.y_vel = 4.67 * 1000 # kilometer * 1000 = meter
+
+    planets = [sun, mercury, venus, earth, mars, jupiter, saturn, uranus, neptune, pluto]
+
+    while run: # Perulangan
+        clock.tick(60)
+        WIN.fill((0,0,0))
+
+        for event in pygame.event.get(): # Percabangan
+            if event.type == pygame.QUIT:
+                    run = False
+
+        for planet in planets:
+            planet.update_position(planets)
+            planet.draw(WIN)
+                
+        pygame.display.update()
+
+    pygame.quit()
+
+main()
